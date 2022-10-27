@@ -1,0 +1,15 @@
+[package]
+name = "mcrputil"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+mimalloc = { version = "0.1.29", default-features = false }
+
+[profile.release]
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"
