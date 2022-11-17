@@ -1,6 +1,3 @@
-// Copyright (c) 2022, Valaphee.
-// All rights reserved.
-
 use std::borrow::{Borrow, BorrowMut};
 use std::fs::{copy, create_dir, create_dir_all, File, remove_dir_all};
 use std::io::{Read, Seek, SeekFrom, Write};
