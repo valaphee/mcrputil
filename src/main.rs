@@ -32,6 +32,8 @@ enum McrpCommand {
         /// Output folder
         output: String,
         #[clap(short, long)]
+        /// Id used for encryption
+        id: String,
         /// Key used for encryption
         key: Option<String>,
         #[clap(short, long)]
@@ -67,7 +69,7 @@ struct ContentEntry {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     match McrpCommand::parse() {
-        McrpCommand::Encrypt { input, output, key, exclude } => {
+        McrpCommand::Encrypt { input, output, id, key, exclude } => {
             let input_path = Path::new(&input);
 
             let output_path = Path::new(&output);
@@ -96,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes())?;
                         Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
 
-                        File::create(output_entry_path)?.write(&buffer)?;
+                        File::create(output_entry_path)?.write_all(&buffer)?;
 
                         Some(from_utf8(&key_buffer)?.to_owned())
                     },
@@ -105,8 +107,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let mut file = File::create(output_path.join("contents.json"))?;
-            file.write(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?;
-            file.seek(SeekFrom::Start(256))?;
+            file.write_all(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8, 0x00u8])?; // Magic and Padding
+            let id_bytes = id.as_bytes();
+            file.write_all(&[id_bytes.len() as u8])?; // Content Id Length
+            file.write_all(id_bytes)?; // Content Id
+            file.seek(SeekFrom::Start(0x100))?; // Encrypted Payload
 
             let content = Content {
                 version: 1,
@@ -125,9 +130,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
 
-            file.write(&buffer)?;
+            file.write_all(&buffer)?;
 
-            File::create(format!("{}.key", output))?.write(key_bytes)?;
+            File::create(format!("{}.key", output))?.write_all(key_bytes)?;
         }
         McrpCommand::Decrypt { input, output, key } => {
             let input_path = Path::new(&input);
@@ -172,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let key_bytes = key.as_bytes();
                         Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
 
-                        File::create(output_entry_path)?.write(&buffer)?;
+                        File::create(output_entry_path)?.write_all(&buffer)?;
                     }
                 }
             }
