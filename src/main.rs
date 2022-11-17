@@ -7,6 +7,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::raw::ino_t;
 use std::path::Path;
 use std::str::from_utf8;
+
 use aes::Aes256;
 use aes::cipher::KeyIvInit;
 use cfb8::cipher::AsyncStreamCipher;
@@ -64,97 +65,93 @@ struct ContentEntry {
     key: Option<String>
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     match McrpCommand::parse() {
         McrpCommand::Encrypt { input, output, key, exclude } => {
             let input_path = Path::new(&input);
 
             let output_path = Path::new(&output);
-            if output_path.exists() {
-                remove_dir_all(output_path);
-            }
-            create_dir_all(output_path);
+            create_dir_all(output_path)?;
 
             let mut content_entries = Vec::new();
-            for path in glob(&format!("{}/**/*.*", input)).unwrap() {
-                let input_entry_path = path.unwrap();
-                let relative_path = input_entry_path.strip_prefix(input_path).unwrap().to_str().unwrap().to_owned();
+            for path in glob(&format!("{}/**/*.*", input))? {
+                let input_entry_path = path?;
+                let relative_path = input_entry_path.strip_prefix(input_path)?.to_str().unwrap().to_owned();
                 let output_entry_path = output_path.join(&relative_path);
 
                 content_entries.push(ContentEntry {
                     key: if exclude.contains(&relative_path) {
-                        copy(input_entry_path, output_entry_path);
+                        copy(input_entry_path, output_entry_path)?;
 
                         None
                     } else {
-                        create_dir_all(output_entry_path.parent().unwrap());
+                        create_dir_all(output_entry_path.parent().unwrap())?;
 
-                        let mut file = File::open(input_entry_path).unwrap();
+                        let mut file = File::open(input_entry_path)?;
                         let mut buffer = Vec::new();
-                        file.read_to_end(&mut buffer);
+                        file.read_to_end(&mut buffer)?;
 
                         let mut key_buffer = Vec::new();
                         let mut rng = thread_rng();
-                        key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes());
+                        key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes())?;
                         Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
 
-                        File::create(output_entry_path).unwrap().write(&buffer);
+                        File::create(output_entry_path)?.write(&buffer)?;
 
-                        Some(from_utf8(&key_buffer).unwrap().to_owned())
+                        Some(from_utf8(&key_buffer)?.to_owned())
                     },
                     path: relative_path
                 })
             }
 
-            let mut file = File::create(output_path.join("contents.json")).unwrap();
-            file.write(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8]);
-            file.seek(SeekFrom::Start(256));
+            let mut file = File::create(output_path.join("contents.json"))?;
+            file.write(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?;
+            file.seek(SeekFrom::Start(256))?;
+
             let content = Content {
                 version: 1,
                 content: content_entries
             };
-            let mut buffer = serde_json::to_vec(&content).unwrap();
+            let mut buffer = serde_json::to_vec(&content)?;
 
             let mut key_buffer = Vec::new();
             let key_bytes = match key {
                 None => {
                     let mut rng = thread_rng();
-                    key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes());
+                    key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes())?;
                     key_buffer.borrow()
                 },
                 Some(ref key) => key.as_bytes()
             };
             Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
 
-            file.write(&buffer);
-            File::create(format!("{}.key", output)).unwrap().write(key_bytes);
+            file.write(&buffer)?;
+
+            File::create(format!("{}.key", output))?.write(key_bytes)?;
         }
         McrpCommand::Decrypt { input, output, key } => {
             let input_path = Path::new(&input);
 
             let output_path = Path::new(&output);
-            if output_path.exists() {
-                remove_dir_all(output_path);
-            }
-            create_dir_all(output_path);
+            create_dir_all(output_path)?;
 
             let content = {
-                let mut file = File::open(input_path.join("contents.json")).unwrap();
-                file.seek(SeekFrom::Start(256));
+                let mut file = File::open(input_path.join("contents.json"))?;
+                file.seek(SeekFrom::Start(256))?;
                 let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer);
+                file.read_to_end(&mut buffer)?;
 
                 let mut key_buffer = Vec::new();
                 let key_bytes = match key {
                     None => {
-                        File::open(format!("{}.key", input)).unwrap().read(&mut key_buffer);
+                        File::open(format!("{}.key", input))?.read(&mut key_buffer)?;
                         key_buffer.borrow()
                     },
                     Some(ref key) => key.as_bytes()
                 };
                 Aes256Cfb8Dec::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
 
-                serde_json::from_slice::<Content>(&buffer).unwrap()
+                serde_json::from_slice::<Content>(&buffer)?
             };
 
             for content_entry in &content.content {
@@ -163,22 +160,24 @@ fn main() {
 
                 match &content_entry.key {
                     None => {
-                        copy(input_entry_path, output_entry_path);
+                        copy(input_entry_path, output_entry_path)?;
                     }
                     Some(key) => {
-                        create_dir_all(output_entry_path.parent().unwrap());
+                        create_dir_all(output_entry_path.parent().unwrap())?;
 
-                        let mut file = File::open(input_entry_path).unwrap();
+                        let mut file = File::open(input_entry_path)?;
                         let mut buffer = Vec::new();
-                        file.read_to_end(&mut buffer);
+                        file.read_to_end(&mut buffer)?;
 
                         let key_bytes = key.as_bytes();
                         Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
 
-                        File::create(output_entry_path).unwrap().write(&buffer);
+                        File::create(output_entry_path)?.write(&buffer)?;
                     }
                 }
             }
         }
     }
+
+    Ok(())
 }
