@@ -26,10 +26,10 @@ Usage: mcrputil encrypt [OPTIONS] --id <ID> <INPUT> <OUTPUT> [KEY]
 Arguments:
   <INPUT>   Input file or folder
   <OUTPUT>  Output folder
-  [KEY]     Key used for encryption
 
 Options:
-  -i, --id <ID>            Id used for encryption
+  -i, --id <ID>            Content id (Resource pack uuid)
+  -k, --key <KEY>          Key used for encryption
   -e, --exclude <EXCLUDE>  Specifies files which should not be encrypted
   -h, --help               Print help information
 ```

@@ -29,8 +29,9 @@ enum McrpCommand {
         /// Output folder
         output: String,
         #[clap(short, long)]
-        /// Id used for encryption
+        /// Content id
         id: String,
+        #[clap(short, long)]
         /// Key used for encryption
         key: Option<String>,
         #[clap(short, long)]
