@@ -4,8 +4,15 @@ on:
       - '*'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: mcrputil
+          - os: windows-latest
+            artifact_name: mcrputil.exe
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -15,7 +22,8 @@ jobs:
         with:
           command: build
           args: --release
-      - uses: actions/create-release@v1
+      - id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -28,6 +36,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: target/release/mcrputil
-          asset_name: mcrputil
-          asset_content_type: application/x-elf
+          asset_path: target/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.artifact_name }}
+          asset_content_type: application/octet-stream
