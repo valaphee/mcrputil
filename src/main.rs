@@ -1,15 +1,13 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::fs::{copy, create_dir, create_dir_all, File, remove_dir_all};
+use std::borrow::Borrow;
+use std::fs::{copy, create_dir_all, File};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::os::unix::raw::ino_t;
 use std::path::Path;
 use std::str::from_utf8;
 
 use aes::Aes256;
 use aes::cipher::KeyIvInit;
 use cfb8::cipher::AsyncStreamCipher;
-use clap::{arg, Arg, ArgAction, Command, Parser};
-use clap::builder::Str;
+use clap::Parser;
 use glob::glob;
 use mimalloc::MiMalloc;
 use rand::{Rng, thread_rng};
@@ -147,7 +145,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut key_buffer = Vec::new();
                 let key_bytes = match key {
                     None => {
-                        File::open(format!("{}.key", input))?.read(&mut key_buffer)?;
+                        File::open(format!("{}.key", input))?.read_to_end(&mut key_buffer)?;
                         key_buffer.borrow()
                     },
                     Some(ref key) => key.as_bytes()
