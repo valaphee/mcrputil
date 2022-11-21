@@ -16,7 +16,6 @@ use mimalloc::MiMalloc;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -30,14 +29,14 @@ enum McrpCommand {
         input: String,
         /// Output folder
         output: String,
-        #[clap(short, long)]
         /// Content id
+        #[clap(short, long)]
         id: String,
-        #[clap(short, long)]
         /// Key used for encryption
-        key: Option<String>,
         #[clap(short, long)]
+        key: Option<String>,
         /// Specifies files which should not be encrypted
+        #[clap(short, long)]
         exclude: Vec<String>
     },
     /// Decrypts the folder with a given key
@@ -46,8 +45,8 @@ enum McrpCommand {
         input: String,
         /// Output folder
         output: String,
-        #[clap(short, long)]
         /// Key used for decryption
+        #[clap(short, long)]
         key: Option<String>,
     }
 }
@@ -76,6 +75,8 @@ struct Signatures {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     match McrpCommand::parse() {
         McrpCommand::Encrypt { input, output, id, key, exclude } => {
+            let always_exclude = vec!["manifest.json", "pack_icon.png", "bug_pack_icon.png"];
+
             let input_path = Path::new(&input);
             let output_path = Path::new(&output);
             create_dir_all(output_path)?;
@@ -98,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let output_entry_path = output_path.join(&relative_path);
 
                 content_entries.push(ContentEntry {
-                    key: if exclude.contains(&relative_path) {
+                    key: if always_exclude.contains(&relative_path.as_str()) || exclude.contains(&relative_path) {
                         if input_entry_path != output_entry_path {
                             copy(input_entry_path, output_entry_path)?;
 
@@ -159,6 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut buffer = Vec::new();
                 file.read_to_end(&mut buffer)?;
                 Aes256Cfb8Dec::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
+                serde_json::from_slice::<Content>(&buffer)?
             };
 
             for content_entry in &content.content {

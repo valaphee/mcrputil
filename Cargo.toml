@@ -1,6 +1,6 @@
 [package]
 name = "mcrputil"
-version = "1.0.0"
+version = "1.1.0"
 description = "Minecraft Resource Pack Util for encrypting, decrypting, signing and verifying resource packs."
 edition = "2021"
 
