@@ -101,7 +101,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 content_entries.push(ContentEntry {
                     key: if always_exclude.contains(&relative_path.as_str()) || exclude.contains(&relative_path) {
                         if input_entry_path != output_entry_path {
-                            copy(input_entry_path, output_entry_path)?;
+                            if relative_path.ends_with(".json") {
+                                serde_json::to_writer(File::create(output_entry_path)?, &serde_json::from_reader::<_, serde_json::Value>(File::open(input_entry_path)?)?)?
+                            } else {
+                                copy(input_entry_path, output_entry_path)?;
+                            }
 
                             println!("Copied {}", relative_path);
                         }
@@ -115,7 +119,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         create_dir_all(output_entry_path.parent().unwrap())?;
                         let mut file = File::open(input_entry_path)?;
                         let mut buffer = Vec::new();
-                        file.read_to_end(&mut buffer)?;
+                        if relative_path.ends_with(".json") {
+                            buffer.append(&mut serde_json::to_vec(&serde_json::from_reader::<_, serde_json::Value>(file)?)?);
+                        } else {
+                            file.read_to_end(&mut buffer)?;
+                        }
                         Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
                         File::create(output_entry_path)?.write_all(&buffer)?;
 
