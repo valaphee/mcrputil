@@ -29,9 +29,6 @@ enum McrpCommand {
         input: String,
         /// Output folder
         output: String,
-        /// Content id
-        #[clap(short, long)]
-        id: String,
         /// Key used for encryption
         #[clap(short, long)]
         key: Option<String>,
@@ -55,6 +52,16 @@ type Aes256Cfb8Enc = cfb8::Encryptor<Aes256>;
 type Aes256Cfb8Dec = cfb8::Decryptor<Aes256>;
 
 #[derive(Serialize, Deserialize, Debug)]
+struct Manifest {
+    header: ManifestHeader,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ManifestHeader {
+    uuid: String
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct Content {
     version: u32,
     content: Vec<ContentEntry>
@@ -66,21 +73,18 @@ struct ContentEntry {
     key: Option<String>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Signatures {
-    path: String,
-    hash: String
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     match McrpCommand::parse() {
-        McrpCommand::Encrypt { input, output, id, key, exclude } => {
+        McrpCommand::Encrypt { input, output, key, exclude } => {
             let always_exclude = vec!["manifest.json", "pack_icon.png", "bug_pack_icon.png"];
 
             let input_path = Path::new(&input);
             let output_path = Path::new(&output);
-            create_dir_all(output_path)?;
 
+            // Read manifest to verify if its a valid pack and to find content id
+            let id = serde_json::from_reader::<_, Manifest>(File::create(output_path.join("manifest.json"))?)?.header.uuid;
+
+            // Generate or use given key, and store it to file
             let mut key_buffer = Vec::new();
             let key_bytes = match key {
                 None => {
@@ -92,10 +96,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             File::create(format!("{}.key", output))?.write_all(key_bytes)?;
 
+            // Create content list and copy or encrypt content
             let mut content_entries = Vec::new();
             for path in glob(&format!("{}/**/*.*", input))? {
                 let input_entry_path = path?;
-                let relative_path = input_entry_path.strip_prefix(input_path)?.to_str().unwrap().to_owned();
+                let relative_path = input_entry_path.strip_prefix(input_path)?.to_str().unwrap().replace("\\", "/");
                 let output_entry_path = output_path.join(&relative_path);
 
                 content_entries.push(ContentEntry {
@@ -136,17 +141,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let mut file = File::create(output_path.join("contents.json"))?;
-            file.write_all(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?;
+            file.write_all(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?; // Magic
             file.seek(SeekFrom::Start(0x10))?;
             let id_bytes = id.as_bytes();
-            file.write_all(&[id_bytes.len() as u8])?;
-            file.write_all(id_bytes)?;
-            file.seek(SeekFrom::Start(0x100))?;
+            file.write_all(&[id_bytes.len() as u8])?; // Content Id Length
+            file.write_all(id_bytes)?; // Content Id
 
             let content = Content { version: 1, content: content_entries };
             let mut buffer = serde_json::to_vec(&content)?;
             Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
-            file.write_all(&buffer)?;
+            file.seek(SeekFrom::Start(0x100))?;
+            file.write_all(&buffer)?; // Encrypted content list
+
+            println!("Encryption finished, key: {}", from_utf8(key_bytes)?);
         }
         McrpCommand::Decrypt { input, output, key } => {
             let input_path = Path::new(&input);
@@ -164,13 +171,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
 
                 let mut file = File::open(input_path.join("contents.json"))?;
-                file.seek(SeekFrom::Start(0x100))?;
                 let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer)?;
+                file.seek(SeekFrom::Start(0x100))?;
+                file.read_to_end(&mut buffer)?; // Encrypted content list
                 Aes256Cfb8Dec::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
                 serde_json::from_slice::<Content>(&buffer)?
             };
 
+            // Copy or decrypt content
             for content_entry in &content.content {
                 let input_entry_path = input_path.join(&content_entry.path);
                 let output_entry_path = output_path.join(&content_entry.path);
@@ -198,6 +206,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
+
+            println!("Decryption finished");
         }
     }
 
