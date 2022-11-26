@@ -186,7 +186,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if input_entry_path.is_file() {
                     match &content_entry.key {
                         None => if input_entry_path != output_entry_path {
-                            copy(input_entry_path, output_entry_path)?;
+                            create_dir_all(output_entry_path.parent().unwrap())?;
+
+                            if content_entry.path.ends_with(".json") {
+                                serde_json::to_writer_pretty(File::create(output_entry_path)?, &serde_json::from_reader::<_, serde_json::Value>(File::open(input_entry_path)?)?)?
+                            } else {
+                                copy(input_entry_path, output_entry_path)?;
+                            }
 
                             println!("Copied {}", &content_entry.path);
                         }
@@ -199,7 +205,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let mut buffer = Vec::new();
                             file.read_to_end(&mut buffer)?;
                             Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
-                            File::create(output_entry_path)?.write_all(&buffer)?;
+                            if content_entry.path.ends_with(".json") {
+                                serde_json::to_writer_pretty(File::create(output_entry_path)?, &serde_json::from_slice::<serde_json::Value>(&buffer)?)?;
+                            } else {
+                                File::create(output_entry_path)?.write_all(&buffer)?;
+                            }
 
                             println!("Decrypted {} with key {}", &content_entry.path, key);
                         }
