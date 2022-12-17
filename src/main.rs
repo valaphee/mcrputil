@@ -100,11 +100,14 @@ fn main() -> Result<()> {
 
             // Create content list and copy or encrypt content
             let mut content_entries = Vec::new();
-            for path in glob(&format!("{}/**/*.*", input))? {
+            for path in glob(&format!("{}/**/*", input))? {
                 let input_entry_path = path?;
+                if !input_entry_path.is_file() {
+                    continue
+                }
+
                 let relative_path = input_entry_path.strip_prefix(input_path)?.to_str().unwrap().replace("\\", "/");
                 let output_entry_path = output_path.join(&relative_path);
-
                 create_dir_all(output_entry_path.parent().unwrap())?;
 
                 content_entries.push(ContentEntry {
@@ -197,50 +200,51 @@ fn main() -> Result<()> {
             // Copy or decrypt content
             for content_entry in &content.content {
                 let input_entry_path = input_path.join(&content_entry.path);
+                if !input_entry_path.is_file() {
+                    continue;
+                }
+
                 let output_entry_path = output_path.join(&content_entry.path);
+                create_dir_all(output_entry_path.parent().unwrap())?;
 
-                if input_entry_path.is_file() {
-                    create_dir_all(output_entry_path.parent().unwrap())?;
-
-                    match &content_entry.key {
-                        None => if input_entry_path != output_entry_path {
-                            if content_entry.path.ends_with(".json") { // Validate and prettify json
-                                match serde_json::from_reader::<_, serde_json::Value>(File::open(&input_entry_path)?) {
-                                    Ok(value) => {
-                                        serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
-                                    }
-                                    Err(_) => {
-                                        copy(input_entry_path, output_entry_path)?;
-                                    }
+                match &content_entry.key {
+                    None => if input_entry_path != output_entry_path {
+                        if content_entry.path.ends_with(".json") { // Validate and prettify json
+                            match serde_json::from_reader::<_, serde_json::Value>(File::open(&input_entry_path)?) {
+                                Ok(value) => {
+                                    serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
                                 }
-                            } else {
-                                copy(input_entry_path, output_entry_path)?;
-                            }
-
-                            println!("Copied {}", &content_entry.path);
-                        }
-                        Some(key) => {
-                            let key_bytes = key.as_bytes();
-
-                            let mut file = File::open(input_entry_path)?;
-                            let mut buffer = Vec::new();
-                            file.read_to_end(&mut buffer)?;
-                            Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
-                            if content_entry.path.ends_with(".json") { // Validate and prettify json
-                                match &serde_json::from_slice::<serde_json::Value>(&buffer) {
-                                    Ok(value) => {
-                                        serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
-                                    }
-                                    Err(_) => {
-                                        File::create(output_entry_path)?.write_all(&buffer)?;
-                                    }
+                                Err(_) => {
+                                    copy(input_entry_path, output_entry_path)?;
                                 }
-                            } else {
-                                File::create(output_entry_path)?.write_all(&buffer)?;
                             }
-
-                            println!("Decrypted {} with key {}", &content_entry.path, key);
+                        } else {
+                            copy(input_entry_path, output_entry_path)?;
                         }
+
+                        println!("Copied {}", &content_entry.path);
+                    }
+                    Some(key) => {
+                        let key_bytes = key.as_bytes();
+
+                        let mut file = File::open(input_entry_path)?;
+                        let mut buffer = Vec::new();
+                        file.read_to_end(&mut buffer)?;
+                        Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
+                        if content_entry.path.ends_with(".json") { // Validate and prettify json
+                            match &serde_json::from_slice::<serde_json::Value>(&buffer) {
+                                Ok(value) => {
+                                    serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
+                                }
+                                Err(_) => {
+                                    File::create(output_entry_path)?.write_all(&buffer)?;
+                                }
+                            }
+                        } else {
+                            File::create(output_entry_path)?.write_all(&buffer)?;
+                        }
+
+                        println!("Decrypted {} with key {}", &content_entry.path, key);
                     }
                 }
             }
