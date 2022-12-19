@@ -64,7 +64,7 @@ BEGIN
             VALUE "InternalName", "mcrputil.exe"
             VALUE "LegalCopyright", "Copyright (c) 2022, Valaphee."
             VALUE "OriginalFilename", "mcrputil.exe"
-            VALUE "ProductName", "Minecraft Resource Pack Util"
+            VALUE "ProductName", "mcrputil"
             VALUE "ProductVersion", "0.0.0.0"
         END
     END

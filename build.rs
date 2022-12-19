@@ -5,7 +5,7 @@ fn main() -> io::Result<()> {
     #[cfg(windows)] {
         WindowsResource::new()
             .set("FileDescription", "Minecraft Resource Pack Util for encrypting, decrypting, signing and verifying resource packs.")
-            .set("ProductName", "Minecraft Resource Pack Util")
+            .set("ProductName", "mcrputil")
             .set("OriginalFilename", "mcrputil.exe")
             .set("LegalCopyright", "Copyright (c) 2022, Valaphee.")
             .set("CompanyName", "Valaphee")
