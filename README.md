@@ -1,9 +1,9 @@
 # mcrputil
 
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
-![version](https://img.shields.io/badge/Version-1.1.2-green.svg)
+![version](https://img.shields.io/badge/Version-1.1.4-green.svg)
 
-Minecraft Resource Pack Util for encrypting and decrypting resource packs.
+Resource Pack Util for encrypting, minifying or decrypting, pretty-printing resource packs for Minecraft.
 
 ## Usage
 
