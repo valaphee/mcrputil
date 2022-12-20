@@ -1,7 +1,7 @@
 [package]
 name = "mcrputil"
 version = "1.1.4"
-description = "Resource Pack Util for encrypting, minifying or decrypting, pretty-printing resource packs for Minecraft."
+description = "Encrypt, minify or decrypt, pretty-print resource packs for Minecraft."
 edition = "2021"
 
 [dependencies]

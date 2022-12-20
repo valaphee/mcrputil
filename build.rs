@@ -4,7 +4,7 @@ use std::io;
 fn main() -> io::Result<()> {
     #[cfg(windows)] {
         WindowsResource::new()
-            .set("FileDescription", "Resource Pack Util for encrypting, minifying or decrypting, pretty-printing resource packs for Minecraft.")
+            .set("FileDescription", "Encrypt, minify or decrypt, pretty-print resource packs for Minecraft.")
             .set("ProductName", "mcrputil")
             .set("OriginalFilename", "mcrputil.exe")
             .set("LegalCopyright", "Copyright (c) 2022, Valaphee.")

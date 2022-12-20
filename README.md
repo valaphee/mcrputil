@@ -3,7 +3,7 @@
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
 ![version](https://img.shields.io/badge/Version-1.1.4-green.svg)
 
-Resource Pack Util for encrypting, minifying or decrypting, pretty-printing resource packs for Minecraft.
+Encrypt, minify or decrypt, pretty-print resource packs for Minecraft.
 
 ## Usage
 
