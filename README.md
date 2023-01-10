@@ -1,11 +1,13 @@
 # mcrputil
 
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
-![version](https://img.shields.io/badge/Version-1.1.4-green.svg)
+![version](https://img.shields.io/badge/Version-1.1.5-green.svg)
 
 Encrypt, minify or decrypt, pretty-print resource packs for Minecraft.
 
 ## Usage
+
+mcrputil is a command-line tool, and does not have a GUI.
 
 ```
 Usage: mcrputil <COMMAND>
