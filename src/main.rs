@@ -13,6 +13,7 @@ use glob::glob;
 use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use serde::{Deserialize, Serialize};
+use wildmatch::WildMatch;
 
 #[derive(Parser)]
 #[clap(about)]
@@ -46,6 +47,7 @@ fn main() -> Result<()> {
     match McrpCommand::parse() {
         McrpCommand::Encrypt { input, output, key, exclude } => {
             let always_exclude = vec!["manifest.json", "pack_icon.png", "bug_pack_icon.png"];
+            let exclude: Vec<WildMatch> = exclude.iter().map(|pattern| WildMatch::new(pattern)).collect();
 
             let input_path = Path::new(&input);
             let output_path = Path::new(&output);
@@ -80,7 +82,7 @@ fn main() -> Result<()> {
                 create_dir_all(output_entry_path.parent().unwrap())?;
 
                 content_entries.push(ContentEntry {
-                    key: if always_exclude.contains(&relative_path.as_str()) || exclude.contains(&relative_path) {
+                    key: if always_exclude.contains(&relative_path.as_str()) || exclude.iter().any(|pattern| pattern.matches(&relative_path)) {
                         if input_entry_path != output_entry_path {
                             if relative_path.ends_with(".json") { // Validate and shrink json
                                 match serde_json::from_reader::<_, serde_json::Value>(open_with_context(&input_entry_path)?) {
@@ -131,13 +133,14 @@ fn main() -> Result<()> {
             }
 
             let mut file = File::create(output_path.join("contents.json"))?;
-            file.write_all(&[0x00u8, 0x00u8, 0x00u8, 0x00u8, 0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?; // Magic
+            file.write_all(&[0x00u8, 0x00u8, 0x00u8, 0x00u8])?; // Version
+            file.write_all(&[0xFCu8, 0xB9u8, 0xCFu8, 0x9Bu8])?; // Magic
             file.seek(SeekFrom::Start(0x10))?;
             let id_bytes = id.as_bytes();
             file.write_all(&[id_bytes.len() as u8])?; // Content Id Length
             file.write_all(id_bytes)?; // Content Id
 
-            let content = Content { version: 1, content: content_entries };
+            let content = Content { /*version: 1, */content: content_entries };
             let mut buffer = serde_json::to_vec(&content)?;
             Aes256Cfb8Enc::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().encrypt(&mut buffer);
             file.seek(SeekFrom::Start(0x100))?;
@@ -242,7 +245,7 @@ struct ManifestHeader {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Content {
-    version: u32,
+    /*version: u32,*/
     content: Vec<ContentEntry>,
 }
 
