@@ -1,17 +1,17 @@
-use std::borrow::Borrow;
-use std::fs::{copy, create_dir_all, File};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
-use std::str::from_utf8;
+use std::{
+    borrow::Borrow,
+    fs::{copy, create_dir_all, File},
+    io::{Read, Seek, SeekFrom, Write},
+    path::{Path, PathBuf},
+    str::from_utf8,
+};
 
-use aes::Aes256;
-use aes::cipher::KeyIvInit;
+use aes::{cipher::KeyIvInit, Aes256};
 use anyhow::{Context, Result};
 use cfb8::cipher::AsyncStreamCipher;
 use clap::Parser;
 use glob::glob;
-use rand::{Rng, thread_rng};
-use rand::distributions::Alphanumeric;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use wildmatch::WildMatch;
 
@@ -45,27 +45,44 @@ enum McrpCommand {
 
 fn main() -> Result<()> {
     match McrpCommand::parse() {
-        McrpCommand::Encrypt { input, output, key, exclude } => {
+        McrpCommand::Encrypt {
+            input,
+            output,
+            key,
+            exclude,
+        } => {
             let always_exclude = vec!["manifest.json", "pack_icon.png", "bug_pack_icon.png"];
-            let exclude: Vec<WildMatch> = exclude.iter().map(|pattern| WildMatch::new(pattern)).collect();
+            let exclude: Vec<WildMatch> = exclude
+                .iter()
+                .map(|pattern| WildMatch::new(pattern))
+                .collect();
 
             let input_path = Path::new(&input);
             let output_path = Path::new(&output);
             create_dir_all(output_path.parent().unwrap())?;
 
             // Read manifest to verify if its a valid pack and to find content id
-            let id = serde_json::from_reader::<_, Manifest>(open_with_context(&input_path.join("manifest.json"))?)
-                .with_context(|| format!("Unable to parse '{:?}'", input_path.join("manifest.json")))?.header.uuid;
+            let id = serde_json::from_reader::<_, Manifest>(open_with_context(
+                &input_path.join("manifest.json"),
+            )?)
+            .with_context(|| format!("Unable to parse '{:?}'", input_path.join("manifest.json")))?
+            .header
+            .uuid;
 
             // Generate or use given key, and store it to file
             let mut key_buffer = Vec::new();
             let key_bytes = match key {
                 None => {
                     let mut rng = thread_rng();
-                    key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes())?;
+                    key_buffer.write(
+                        (0..32)
+                            .map(|_| rng.sample(Alphanumeric) as char)
+                            .collect::<String>()
+                            .as_bytes(),
+                    )?;
                     key_buffer.borrow()
                 }
-                Some(ref key) => key.as_bytes()
+                Some(ref key) => key.as_bytes(),
             };
             File::create(format!("{}.key", output))?.write_all(key_bytes)?;
 
@@ -74,20 +91,34 @@ fn main() -> Result<()> {
             for path in glob(&format!("{}/**/*", input))? {
                 let input_entry_path = path?;
                 if !input_entry_path.is_file() {
-                    continue
+                    continue;
                 }
 
-                let relative_path = input_entry_path.strip_prefix(input_path)?.to_str().unwrap().replace("\\", "/");
+                let relative_path = input_entry_path
+                    .strip_prefix(input_path)?
+                    .to_str()
+                    .unwrap()
+                    .replace("\\", "/");
                 let output_entry_path = output_path.join(&relative_path);
                 create_dir_all(output_entry_path.parent().unwrap())?;
 
                 content_entries.push(ContentEntry {
-                    key: if always_exclude.contains(&relative_path.as_str()) || exclude.iter().any(|pattern| pattern.matches(&relative_path)) {
+                    key: if always_exclude.contains(&relative_path.as_str())
+                        || exclude
+                            .iter()
+                            .any(|pattern| pattern.matches(&relative_path))
+                    {
                         if input_entry_path != output_entry_path {
-                            if relative_path.ends_with(".json") { // Validate and shrink json
-                                match serde_json::from_reader::<_, serde_json::Value>(open_with_context(&input_entry_path)?) {
+                            if relative_path.ends_with(".json") {
+                                // Validate and shrink json
+                                match serde_json::from_reader::<_, serde_json::Value>(
+                                    open_with_context(&input_entry_path)?,
+                                ) {
                                     Ok(value) => {
-                                        serde_json::to_writer(File::create(output_entry_path)?, &value)?;
+                                        serde_json::to_writer(
+                                            File::create(output_entry_path)?,
+                                            &value,
+                                        )?;
                                     }
                                     Err(_) => {
                                         copy(input_entry_path, output_entry_path)?;
@@ -103,15 +134,21 @@ fn main() -> Result<()> {
                     } else {
                         let mut key_buffer = Vec::new();
                         let mut rng = thread_rng();
-                        key_buffer.write((0..32).map(|_| rng.sample(Alphanumeric) as char).collect::<String>().as_bytes())?;
+                        key_buffer.write(
+                            (0..32)
+                                .map(|_| rng.sample(Alphanumeric) as char)
+                                .collect::<String>()
+                                .as_bytes(),
+                        )?;
                         let key = from_utf8(&key_buffer)?.to_owned();
 
                         let mut file = open_with_context(&input_entry_path)?;
                         let mut buffer = Vec::new();
-                        if relative_path.ends_with(".json") { // Validate and shrink json
-                            match &serde_json::from_reader::<_, serde_json::Value>(&file) {
+                        if relative_path.ends_with(".json") {
+                            // Validate and shrink json
+                            match serde_json::from_reader::<_, serde_json::Value>(&file) {
                                 Ok(value) => {
-                                    buffer.append(&mut serde_json::to_vec(value)?);
+                                    buffer.append(&mut serde_json::to_vec(&value)?);
                                 }
                                 Err(_) => {
                                     file.rewind()?;
@@ -121,7 +158,9 @@ fn main() -> Result<()> {
                         } else {
                             file.read_to_end(&mut buffer)?;
                         }
-                        Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16]).unwrap().encrypt(&mut buffer);
+                        Aes256Cfb8Enc::new_from_slices(&key_buffer, &key_buffer[0..16])
+                            .unwrap()
+                            .encrypt(&mut buffer);
                         File::create(output_entry_path)?.write_all(&buffer)?;
 
                         println!("Encrypted {} with key {}", relative_path, key);
@@ -140,9 +179,14 @@ fn main() -> Result<()> {
             file.write_all(&[id_bytes.len() as u8])?; // Content Id Length
             file.write_all(id_bytes)?; // Content Id
 
-            let content = Content { /*version: 1, */content: content_entries };
+            let content = Content {
+                // version: 1,
+                content: content_entries,
+            };
             let mut buffer = serde_json::to_vec(&content)?;
-            Aes256Cfb8Enc::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().encrypt(&mut buffer);
+            Aes256Cfb8Enc::new_from_slices(&key_bytes, &key_bytes[0..16])
+                .unwrap()
+                .encrypt(&mut buffer);
             file.seek(SeekFrom::Start(0x100))?;
             file.write_all(&buffer)?; // Encrypted content list
 
@@ -156,17 +200,22 @@ fn main() -> Result<()> {
                 let mut key_buffer = Vec::new();
                 let key_bytes = match key {
                     None => {
-                        open_with_context(&Path::new(format!("{}.key", input).as_str()).to_path_buf())?.read_to_end(&mut key_buffer)?;
+                        open_with_context(
+                            &Path::new(format!("{}.key", input).as_str()).to_path_buf(),
+                        )?
+                        .read_to_end(&mut key_buffer)?;
                         key_buffer.borrow()
                     }
-                    Some(ref key) => key.as_bytes()
+                    Some(ref key) => key.as_bytes(),
                 };
 
                 let mut file = open_with_context(&input_path.join("contents.json"))?;
                 let mut buffer = Vec::new();
                 file.seek(SeekFrom::Start(0x100))?;
                 file.read_to_end(&mut buffer)?; // Encrypted content list
-                Aes256Cfb8Dec::new_from_slices(&key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
+                Aes256Cfb8Dec::new_from_slices(&key_bytes, &key_bytes[0..16])
+                    .unwrap()
+                    .decrypt(&mut buffer);
                 serde_json::from_slice::<Content>(&buffer)?
             };
 
@@ -181,21 +230,29 @@ fn main() -> Result<()> {
                 create_dir_all(output_entry_path.parent().unwrap())?;
 
                 match &content_entry.key {
-                    None => if input_entry_path != output_entry_path {
-                        if content_entry.path.ends_with(".json") { // Validate and prettify json
-                            match serde_json::from_reader::<_, serde_json::Value>(open_with_context(&input_entry_path)?) {
-                                Ok(value) => {
-                                    serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
+                    None => {
+                        if input_entry_path != output_entry_path {
+                            if content_entry.path.ends_with(".json") {
+                                // Validate and prettify json
+                                match serde_json::from_reader::<_, serde_json::Value>(
+                                    open_with_context(&input_entry_path)?,
+                                ) {
+                                    Ok(value) => {
+                                        serde_json::to_writer_pretty(
+                                            File::create(output_entry_path)?,
+                                            &value,
+                                        )?;
+                                    }
+                                    Err(_) => {
+                                        copy(input_entry_path, output_entry_path)?;
+                                    }
                                 }
-                                Err(_) => {
-                                    copy(input_entry_path, output_entry_path)?;
-                                }
+                            } else {
+                                copy(input_entry_path, output_entry_path)?;
                             }
-                        } else {
-                            copy(input_entry_path, output_entry_path)?;
-                        }
 
-                        println!("Copied {}", &content_entry.path);
+                            println!("Copied {}", &content_entry.path);
+                        }
                     }
                     Some(key) => {
                         let key_bytes = key.as_bytes();
@@ -203,11 +260,17 @@ fn main() -> Result<()> {
                         let mut file = open_with_context(&input_entry_path)?;
                         let mut buffer = Vec::new();
                         file.read_to_end(&mut buffer)?;
-                        Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16]).unwrap().decrypt(&mut buffer);
-                        if content_entry.path.ends_with(".json") { // Validate and prettify json
+                        Aes256Cfb8Dec::new_from_slices(key_bytes, &key_bytes[0..16])
+                            .unwrap()
+                            .decrypt(&mut buffer);
+                        if content_entry.path.ends_with(".json") {
+                            // Validate and prettify json
                             match &serde_json::from_slice::<serde_json::Value>(&buffer) {
                                 Ok(value) => {
-                                    serde_json::to_writer_pretty(File::create(output_entry_path)?, &value)?;
+                                    serde_json::to_writer_pretty(
+                                        File::create(output_entry_path)?,
+                                        &value,
+                                    )?;
                                 }
                                 Err(_) => {
                                     File::create(output_entry_path)?.write_all(&buffer)?;
@@ -230,7 +293,7 @@ fn main() -> Result<()> {
 }
 
 fn open_with_context(path: &PathBuf) -> Result<File> {
-    return File::open(path).with_context(|| format!("Unable to open '{:?}'", path))
+    return File::open(path).with_context(|| format!("Unable to open '{:?}'", path));
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -245,7 +308,7 @@ struct ManifestHeader {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Content {
-    /*version: u32,*/
+    // version: u32,
     content: Vec<ContentEntry>,
 }
 

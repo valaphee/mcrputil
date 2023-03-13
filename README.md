@@ -2,6 +2,7 @@
 
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
 ![version](https://img.shields.io/badge/Version-1.1.5-green.svg)
+
 [![Lang-简体中文](https://img.shields.io/badge/Lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README-zh_CN.md)
 
 Minecraft Resource Pack Util for encrypting and decrypting resource packs.

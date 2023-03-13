@@ -1,0 +1,5 @@
+imports_granularity = "Crate"
+newline_style = "Unix"
+normalize_comments = true
+unstable_features = true
+wrap_comments = true

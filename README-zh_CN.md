@@ -2,6 +2,7 @@
 
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
 ![version](https://img.shields.io/badge/Version-1.1.5-green.svg)
+
 [![Lang-English](https://img.shields.io/badge/Lang-English-brightgreen)](README.md)
 
 一个用于Minecraft(我的世界)资源包加密和解密的工具
