@@ -1,4 +1,5 @@
 use std::io;
+
 #[cfg(windows)]
 use winres::WindowsResource;
 
@@ -16,7 +17,6 @@ fn main() -> io::Result<()> {
             .set("CompanyName", "Valaphee")
             .set("InternalName", "mcrputil.exe")
             .set_icon("mcrputil.ico")
-            // .set_resource_file("mcrputil.rc")
             .compile()?;
     }
     Ok(())

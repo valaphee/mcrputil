@@ -10,6 +10,7 @@
 ## 使用方法
 
 mcrputil 是一个命令行工具没有gui
+
 ```
 使用命令: mcrputil <子命令>
 
@@ -23,6 +24,7 @@ mcrputil 是一个命令行工具没有gui
 ```
 
 ### 加密
+
 ```
 使用命令: mcrputil encrypt [子选项] <输入文件夹> <输出文件夹>
 
@@ -37,6 +39,7 @@ mcrputil 是一个命令行工具没有gui
 ```
 
 ### 解密
+
 ```
 使用命令: mcrputil decrypt [子选项] <输入文件夹> <输出文件夹>
 
