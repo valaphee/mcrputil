@@ -43,6 +43,8 @@ Options:
 3. A contents.json should now be in your pack/output directory, the key will be displayed in the console after "Encryption finished, key: \<your key>"
 4. Zip your output directory contents (not the directory itself), and copy your key depending on the software used to \<your pack zip file>.key.
 
+For integration into build automation systems, it might be easier to use the --key command line argument with an own supplied key.
+
 ### Decryption
 
 ```
