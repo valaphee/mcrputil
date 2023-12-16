@@ -9,9 +9,8 @@ description = "Minecraft Resource Pack Util for encrypting and decrypting resour
 
 [dependencies]
 aes = "0.8"
-anyhow = "1.0"
 cfb8 = "0.8"
-clap = { version = "4.1", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 glob = "0.3"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }

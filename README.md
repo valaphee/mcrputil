@@ -1,9 +1,7 @@
 # mcrputil
 
 ![license](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
-![version](https://img.shields.io/badge/Version-1.1.5-green.svg)
-
-[![Lang-简体中文](https://img.shields.io/badge/Lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README-zh_CN.md)
+![version](https://img.shields.io/badge/Version-1.2.0-green.svg)
 
 Minecraft Resource Pack Util for encrypting and decrypting resource packs.
 
@@ -29,7 +27,7 @@ Options:
 Usage: mcrputil encrypt [OPTIONS] <INPUT> <OUTPUT>
 
 Arguments:
-  <INPUT>   Input file or folder
+  <INPUT>   Input folder
   <OUTPUT>  Output folder
 
 Options:
@@ -52,7 +50,7 @@ Options:
 Usage: mcrputil decrypt [OPTIONS] <INPUT> <OUTPUT>
 
 Arguments:
-  <INPUT>   Input file or folder
+  <INPUT>   Input folder
   <OUTPUT>  Output folder
 
 Options:
@@ -60,5 +58,7 @@ Options:
   -h, --help       Print help information
 ```
 
-Please make sure, to not publish any of the resulting files, or only with the consent of the copyright holder, as it is
-a violation, and note that there will be no support for decrypting resource packs.
+Please make sure, to not publish any of the resulting files, or only with the consent of the copyright holder, and note
+that there will be no support for decrypting resource packs.
+
+[![Lang-简体中文](https://img.shields.io/badge/Lang-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README-zh_CN.md)
