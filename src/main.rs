@@ -229,7 +229,7 @@ fn decrypt(input: impl AsRef<Path>, output: impl AsRef<Path>, key: &[u8]) {
         Aes256Cfb8Dec::new_from_slices(&key, &key[0..16])
             .unwrap()
             .decrypt(&mut buffer);
-        serde_json::from_slice::<Content>(&buffer).unwrap()
+        serde_json::from_slice::<Content>(&buffer).expect("Failed to parse contents.json, the key might be wrong")
     };
 
     // ignore all entries but the first
