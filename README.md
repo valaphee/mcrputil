@@ -39,9 +39,9 @@ Options:
 #### Step-by-step
 
 1. Make sure your pack is unzipped, and in your pack directory should be a manifest.json
-2. ./mcrputil encrypt <path to your unzipped pack directory> <path to your unzipped pack/output directory>
-3. A contents.json should now be in your pack/output directory, the key will be displayed in the console after "Encryption finished, key: <your key>"
-4. Zip your output directory contents (not the directory itself), and copy your key depending on the software used to <your pack zip file>.key.
+2. ./mcrputil encrypt \<path to your unzipped pack directory> \<path to your unzipped pack/output directory>
+3. A contents.json should now be in your pack/output directory, the key will be displayed in the console after "Encryption finished, key: \<your key>"
+4. Zip your output directory contents (not the directory itself), and copy your key depending on the software used to \<your pack zip file>.key.
 
 ### Decryption
 
